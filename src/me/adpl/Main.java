@@ -1,41 +1,43 @@
 package me.adpl;
 
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
+import java.io.*;
 import java.util.*;
 
 public class Main {
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
         Properties configuracion = inicializarPropiedades();
         int stop = Integer.parseInt(configuracion.getProperty("limite_evaluaciones"));
         int nIndividuos = Integer.parseInt(configuracion.getProperty("poblacion"));
 
         Individuo poblacion[] = new Individuo[nIndividuos];
 
+        String contenido = readFile("cnf01.dat");
+
+        int f[][] = dataGestFrecuencias(contenido);
+        int d[][] = dataGestLocalizaciones(contenido);
+
         for ( int i = 0; i < poblacion.length; i++ ) {
-            poblacion[i] = new Individuo();
-            poblacion[i].mostrarGenotipo();
+            poblacion[i] = new Individuo(f.length);
         }
 
-        algoritmoGeneticoEstacionario(poblacion, stop);
+        algoritmoGeneticoEstacionario(poblacion, stop, f, d);
     }
 
-    public static void algoritmoGeneticoEstacionario(Individuo[] poblacion, int stop) {
+    public static void algoritmoGeneticoEstacionario(Individuo[] poblacion, int stop, int[][] f, int[][] d) {
         int t = 0;
         List<Individuo> ganadoresTorneo = new ArrayList<>();
 
         do {
             t++;
             for ( Individuo individuo : poblacion ) {
-                individuo.evaluar();
+                individuo.evaluar(f, d);
                 individuo.mostrarGenotipo();
             }
             ganadoresTorneo.add(evaluacionPorTorneo(poblacion));
             ganadoresTorneo.add(evaluacionPorTorneo(poblacion));
-            Individuo hijo1 = cruceEnOrden(ganadoresTorneo.get(0), ganadoresTorneo.get(1));
-            Individuo hijo2 = cruceEnOrden(ganadoresTorneo.get(1), ganadoresTorneo.get(0));
+            Individuo hijo1 = crucePMX(ganadoresTorneo.get(0), ganadoresTorneo.get(1));
+            Individuo hijo2 = crucePMX(ganadoresTorneo.get(1), ganadoresTorneo.get(0));
 
             Individuo peor1, peor2;
             peor1 = poblacion[0];
@@ -44,11 +46,11 @@ public class Main {
             Individuo peores[] = new Individuo[2];
 
             for ( Individuo i : poblacion ) {
-                if ( peor1.getValor() > i.getValor() ) {
+                if ( peor1.getValor() < i.getValor() ) {
                     System.out.println("Peor 1: " + peor1.getValor() + " vs " + i.getValor() + " CAMBIO");
                     peor1 = i;
                 }
-                if ( i.getValor() != peor1.getValor() && peor2.getValor() > i.getValor() ) {
+                if ( i.getValor() != peor1.getValor() && peor2.getValor() < i.getValor() ) {
                     System.out.println("Peor 2: " + peor2.getValor() + " vs " + i.getValor() + " CAMBIO");
                     peor2 = i;
                 }
@@ -58,34 +60,40 @@ public class Main {
             peor1.mostrarGenotipo();
             peor2.mostrarGenotipo();
             System.out.println("HIJOS:");
+            hijo1.evaluar(f, d);
+            hijo2.evaluar(f, d);
             hijo1.mostrarGenotipo();
             hijo2.mostrarGenotipo();
 
+            hijo1.mutacion();
+            hijo1.evaluar(f, d);
+            hijo1.mostrarGenotipo();
+
             if ( hijo1.getValor() > peor1.getValor() ) {
-                poblacion[peor1.getId()-1] = hijo1;
+                poblacion[peor1.getId()] = hijo1;
             } else if ( hijo2.getValor() > peor1.getValor() ) {
-                poblacion[peor1.getId()-1] = hijo2;
+                poblacion[peor1.getId()] = hijo2;
             }
 
             //TODO: Gestionar correctamente prioridad de selección de hijos
-            if ( hijo1.getValor() > hijo2.getValor() ) {
-                if (hijo1.getValor() != peor1.getValor() && hijo1.getValor() > peor2.getValor()) {
+            if ( hijo1.getValor() < hijo2.getValor() ) {
+                if (hijo1.getValor() != peor1.getValor() && hijo1.getValor() < peor2.getValor()) {
                     poblacion[peor1.getId() - 1] = hijo1;
-                } else if (hijo2.getValor() != peor1.getValor() && hijo2.getValor() > peor2.getValor()) {
+                } else if (hijo2.getValor() != peor1.getValor() && hijo2.getValor() < peor2.getValor()) {
                     poblacion[peor2.getId() - 1] = hijo2;
                 }
             } else {
-                if (hijo2.getValor() != peor1.getValor() && hijo2.getValor() > peor2.getValor()) {
-                    poblacion[peor2.getId() - 1] = hijo2;
-                } else if (hijo1.getValor() != peor2.getValor() && hijo1.getValor() > peor1.getValor()) {
-                    poblacion[peor1.getId() - 1] = hijo1;
+                if (hijo2.getValor() != peor1.getValor() && hijo2.getValor() < peor2.getValor()) {
+                    poblacion[peor2.getId()] = hijo2;
+                } else if (hijo1.getValor() != peor2.getValor() && hijo1.getValor() < peor1.getValor()) {
+                    poblacion[peor1.getId()] = hijo1;
                 }
             }
 
             System.out.println("");
             System.out.println("");
             for ( Individuo individuo : poblacion ) {
-                individuo.evaluar();
+                individuo.evaluar(f, d);
                 individuo.mostrarGenotipo();
             }
 
@@ -96,8 +104,8 @@ public class Main {
         Random r = new Random();
         int corte1, corte2;
         do {
-            corte1 = r.nextInt(9);
-            corte2 = r.nextInt(8)+1;
+            corte1 = r.nextInt(22);
+            corte2 = r.nextInt(21)+1;
         } while ( corte1 >= corte2 );
 
         System.out.println("Cortes: ");
@@ -115,7 +123,7 @@ public class Main {
         padre1.mostrarGenotipo();
         padre2.mostrarGenotipo();
 
-        Individuo hijo1 = new Individuo();
+        Individuo hijo1 = new Individuo(22);
 
         hijo1.setGenotipo(padre1.getGenotipo(), corte1, corte2);
 
@@ -136,27 +144,27 @@ public class Main {
         Random r = new Random();
         int corte1, corte2;
         do {
-            corte1 = r.nextInt(9);
-            corte2 = r.nextInt(8)+1;
+            corte1 = r.nextInt(22);
+            corte2 = r.nextInt(21)+1;
         } while ( corte1 >= corte2 );
 
         System.out.println("Cortes: ");
         System.out.println("Corte 1: " + corte1);
         System.out.println("Corte 2: " + corte2);
-        for ( int i = 0; i < 9; i++ ) {
+        System.out.print("Individuo xx: ");
+        for ( int i = 0; i < padre1.getGenotipo().length; i++ ) {
+            if ( padre1.getGenotipo()[i] <= 10 ) System.out.print("  ");
             if (i != corte1 && i != corte2) {
-                System.out.print("  ");
+                System.out.print(" ");
             } else {
-                System.out.print("* ");
+                System.out.print("*");
             }
         }
         System.out.println();
         padre1.mostrarGenotipo();
-        System.out.println();
         padre2.mostrarGenotipo();
-        System.out.println();
 
-        Individuo hijo1 = new Individuo();
+        Individuo hijo1 = new Individuo(22);
         hijo1.setGenotipo(padre2.getGenotipo(), corte1, corte2);
         hijo1.mostrarGenotipo();
         System.out.println();
@@ -168,44 +176,48 @@ public class Main {
             iniciosPadre2[i] = padre2.getGenotipo()[corte1+i];
         }
 
-        Stack<Integer> pila = new Stack<>();
-        int numero = -1;
-        int auxiliar = -1;
-
-        for ( int n : iniciosPadre2 ) {
+        for ( int n : iniciosPadre1 ) {
+            boolean continuar = false;
             boolean encontrado = false;
-            int i = 0, j = 0, posicion = -1;
+            int busq = n;
+            int busqAux = n;
+            int posicion = corte1;
+            int posicion2 = corte1;
 
-            for ( int x : iniciosPadre1 ) {
-                if ( n == x ) {
-                    encontrado = true;
-                    break;
+            do {
+                for ( int i = 0; i < hijo1.getGenotipo().length; i++ ) {
+                    if ( n == hijo1.getGenotipo()[i] ) {
+                        encontrado = true;
+                        continuar = false;
+                        break;
+                    }
                 }
-            }
 
-
-            if ( !encontrado ) {
-                pila.addElement(n);
-                auxiliar = n;
-                do {
-                    while (auxiliar != padre1.getGenotipo()[i]) {
-                        if ( auxiliar == n ) posicion = i;
-                        i++;
+                if ( !encontrado ) {
+                    for ( int i = 0; i < padre1.getGenotipo().length; i++ ) {
+                        if ( busq == padre1.getGenotipo()[i] ) {
+                            posicion = i;
+                            busqAux = padre2.getGenotipo()[i];
+                            break;
+                        }
                     }
 
-                    auxiliar = padre2.getGenotipo()[i];
-                    pila.addElement(auxiliar);
-                    i = 0;
-                    System.out.println(pila);
-
-                } while ( !pila.contains(auxiliar) );
-
-                hijo1.setGenotipo(posicion, pila.pop());
-                pila.clear();
-
-                hijo1.mostrarGenotipo();
-
-            }
+                    for (int i = 0; i < padre1.getGenotipo().length; i++) {
+                        if (busqAux == padre1.getGenotipo()[i]) {
+                            if (hijo1.getGenotipo()[i] == -1) {
+                                hijo1.setGenotipo(i, n);
+                                continuar = false;
+                                break;
+                            } else {
+                                busq = busqAux;
+                                continuar = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+            } while ( continuar );
+            hijo1.mostrarGenotipo();
         }
 
         return padre1;
@@ -238,5 +250,64 @@ public class Main {
             System.out.println("Error: No se pudo leer el fichero");
             return null;
         }
+    }
+
+    public static String readFile(String archivo) throws IOException {
+        String result = "", line;
+        FileReader f = new FileReader(archivo);
+        BufferedReader br = new BufferedReader(f);
+        while((line = br.readLine()) != null) {
+            result = result.concat(line + "\n");
+        }
+        br.close();
+        return result;
+    }
+
+    public static int[][] dataGestFrecuencias(String text) throws IOException {
+        String[] numbers;
+        numbers = text.split("\\s+");
+
+        int tam = Integer.parseInt(numbers[0]);
+        int frecuencias[][] = new int[tam][tam];
+
+        int i = 1, j = 0, k = 0;
+
+        do {
+            frecuencias[k][j] = Integer.parseInt(numbers[i]);
+            j++;
+
+            if ( j - tam == 0 ) {
+                j = 0;
+                k++;
+            }
+
+            i++;
+        } while ( i < (tam*tam) );
+
+        return frecuencias;
+    }
+
+    public static int[][] dataGestLocalizaciones(String text) throws IOException {
+        String[] numbers;
+        numbers = text.split("\\s+");
+
+        int tam = Integer.parseInt(numbers[0]);
+        int localizaciones[][] = new int[tam][tam];
+
+        int i = 1, j = 0, k = 0;
+
+        do {
+            localizaciones[k][j] = Integer.parseInt(numbers[i+(tam*tam)]);
+            j++;
+
+            if ( j - tam == 0 ) {
+                j = 0;
+                k++;
+            }
+
+            i++;
+        } while ( i < (tam*tam) );
+
+        return localizaciones;
     }
 }

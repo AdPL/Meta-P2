@@ -11,20 +11,19 @@ public class Individuo {
     private boolean evaluado;
     private int[] genotipo;
 
-    public Individuo() {
+    public Individuo(int tamGenotipo) {
         this.id = cuenta.incrementAndGet();
         this.generacion = 0;
         this.evaluado = true;
-        this.genotipo = generarGenotipo();
-        this.evaluar();
+        this.genotipo = generarGenotipo(tamGenotipo);
     };
 
-    public Individuo(int valor, int generacion, boolean evaluado) {
+    public Individuo(int valor, int generacion, boolean evaluado, int tamGenotipo) {
         this.id = cuenta.incrementAndGet();
         this.valor = valor;
         this.generacion = generacion;
         this.evaluado = evaluado;
-        this.genotipo = generarGenotipo();
+        this.genotipo = generarGenotipo(tamGenotipo);
     }
 
     public int getId() { return id; }
@@ -64,8 +63,8 @@ public class Individuo {
     }
 
     public void setGenotipo(int[] genotipo, int inicio, int fin) {
-        for ( int i = 0; i < 9; i++ ) {
-            this.genotipo[i] = 0;
+        for ( int i = 0; i < 22; i++ ) {
+            this.genotipo[i] = -1;
             if ( i >= inicio && i <= fin ) {
                 this.genotipo[i] = genotipo[i];
             }
@@ -76,31 +75,71 @@ public class Individuo {
         this.genotipo[pos] = v;
     }
 
-    private int[] generarGenotipo() {
-        int genotipo[] = new int[9];
+    private int[] generarGenotipo(int tamGenotipo) {
+        int genotipo[] = new int[tamGenotipo];
         Random rnd = new Random();
         Set<Integer> generados = new HashSet<>();
-        for ( int i = 0; i < 9; i++ ) {
-            genotipo[i] = rnd.nextInt(9);
+        for (int i = 0; i < tamGenotipo; i++) {
+            int aleatorio = -1;
+            boolean generado = false;
+            while (!generado) {
+                int posible = rnd.nextInt(tamGenotipo);
+                if (!generados.contains(posible)) {
+                    generados.add(posible);
+                    aleatorio = posible;
+                    generado = true;
+                }
+            }
+            genotipo[i] = aleatorio;
         }
         return genotipo;
     }
 
-    public void evaluar() {
-        int valor = 0;
-        for ( int i = 0; i < 9; i++ ) {
-            valor += genotipo[i] * i;
+    public void evaluar(int[][] f, int[][] d) {
+        int suma = 0;
+
+        for (int i = 0; i < f.length; i++) {
+            for (int j = 0; j < d.length; j++) {
+                if ( i != j ) {
+                    suma += f[i][j] * d[genotipo[j]][genotipo[i]];
+                }
+            }
         }
-        this.valor = valor;
+
+        this.valor = suma;
     }
 
     public void mostrarGenotipo() {
         System.out.print("Individuo " + id + ": ");
-        for ( int i = 0; i < 9; i++ ) {
-            System.out.print(genotipo[i] + " ");
+        for ( int i = 0; i < 22; i++ ) {
+            if ( genotipo[i] == - 1 )
+                System.out.print("X ");
+            else
+                System.out.print(genotipo[i] + " ");
         }
-        this.evaluar();
         System.out.println(" = " + valor);
+    }
+
+    public void mutacion() {
+        Random rnd = new Random();
+        List<Integer> mutados = new ArrayList<>();
+        double probabilidad = 0.001 * genotipo.length;
+        double random;
+        for ( int i = 0; i < genotipo.length; i++ ) {
+            random = rnd.nextDouble();
+            if ( random < 0.5 ) {
+                System.out.print(" | MUTA gen " + i);
+                mutados.add(i);
+            }
+        }
+        System.out.println();
+        for ( int i = 0; i < (mutados.size()-1); i++ ) {
+            int pos = mutados.get(i);
+            int pos2 = mutados.get(i+1);
+            int aux = genotipo[pos];
+            genotipo[pos] = genotipo[pos2];
+            genotipo[pos2] = aux;
+        }
     }
 
     @Override
