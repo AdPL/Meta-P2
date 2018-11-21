@@ -10,21 +10,21 @@ public class Main {
         int stop = Integer.parseInt(configuracion.getProperty("limite_evaluaciones"));
         int nIndividuos = Integer.parseInt(configuracion.getProperty("poblacion"));
 
-        Individuo poblacion[] = new Individuo[nIndividuos];
+        List<Individuo> poblacion = new ArrayList<>();
 
         String contenido = readFile("cnf01.dat");
 
         int f[][] = dataGestFrecuencias(contenido);
         int d[][] = dataGestLocalizaciones(contenido);
 
-        for ( int i = 0; i < poblacion.length; i++ ) {
-            poblacion[i] = new Individuo(f.length);
+        for ( int i = 0; i < nIndividuos; i++ ) {
+            poblacion.add(new Individuo(f.length));
         }
 
         algoritmoGeneticoEstacionario(poblacion, stop, f, d);
     }
 
-    public static void algoritmoGeneticoEstacionario(Individuo[] poblacion, int stop, int[][] f, int[][] d) {
+    public static void algoritmoGeneticoEstacionario(List<Individuo> poblacion, int stop, int[][] f, int[][] d) {
         int t = 0;
         List<Individuo> ganadoresTorneo = new ArrayList<>();
 
@@ -32,7 +32,7 @@ public class Main {
             t++;
             for ( Individuo individuo : poblacion ) {
                 individuo.evaluar(f, d);
-                individuo.mostrarGenotipo();
+                //individuo.mostrarGenotipo();
             }
             ganadoresTorneo.add(evaluacionPorTorneo(poblacion));
             ganadoresTorneo.add(evaluacionPorTorneo(poblacion));
@@ -40,140 +40,170 @@ public class Main {
             Individuo hijo2 = crucePMX(ganadoresTorneo.get(1), ganadoresTorneo.get(0));
 
             Individuo peor1, peor2;
-            peor1 = poblacion[0];
-            peor2 = poblacion[poblacion.length-1];
+            peor1 = poblacion.get(0);
+            peor2 = poblacion.get(poblacion.size()-1);
 
+            int posPeor1 = 0;
+            int posPeor2 = 49;
             Individuo peores[] = new Individuo[2];
 
-            for ( Individuo i : poblacion ) {
-                if ( peor1.getValor() < i.getValor() ) {
-                    System.out.println("Peor 1: " + peor1.getValor() + " vs " + i.getValor() + " CAMBIO");
-                    peor1 = i;
+            for ( int i = 0; i < poblacion.size(); i++ ) {
+                if ( peor1.getValor() > poblacion.get(i).getValor() ) {
+                    //System.out.println("Peor 1: " + peor1.getValor() + " vs " + poblacion.get(i).getValor() + " CAMBIO");
+                    peor1 = poblacion.get(i);
+                    posPeor1 = i;
                 }
-                if ( i.getValor() != peor1.getValor() && peor2.getValor() < i.getValor() ) {
-                    System.out.println("Peor 2: " + peor2.getValor() + " vs " + i.getValor() + " CAMBIO");
-                    peor2 = i;
+                if ( poblacion.get(i).getValor() != peor1.getValor() && peor2.getValor() > poblacion.get(i).getValor() ) {
+                    //System.out.println("Peor 2: " + peor2.getValor() + " vs " + poblacion.get(i).getValor() + " CAMBIO");
+                    peor2 = poblacion.get(i);
+                    posPeor2 = i;
                 }
             }
 
-            System.out.println("PEORES:");
-            peor1.mostrarGenotipo();
-            peor2.mostrarGenotipo();
-            System.out.println("HIJOS:");
+            //System.out.println("PEORES:");
+            //peor1.mostrarGenotipo();
+            //peor2.mostrarGenotipo();
+            //System.out.println("HIJOS:");
             hijo1.evaluar(f, d);
             hijo2.evaluar(f, d);
-            hijo1.mostrarGenotipo();
-            hijo2.mostrarGenotipo();
+            //hijo1.mostrarGenotipo();
+            //hijo2.mostrarGenotipo();
 
-            hijo1.mutacion();
-            hijo1.evaluar(f, d);
-            hijo1.mostrarGenotipo();
+            //TODO: MUTAR
+            //(hijo1.mutacion();
+            //hijo1.evaluar(f, d);
+            //hijo1.mostrarGenotipo();
 
-            if ( hijo1.getValor() > peor1.getValor() ) {
-                poblacion[peor1.getId()] = hijo1;
-            } else if ( hijo2.getValor() > peor1.getValor() ) {
-                poblacion[peor1.getId()] = hijo2;
-            }
-
-            //TODO: Gestionar correctamente prioridad de selección de hijos
-            if ( hijo1.getValor() < hijo2.getValor() ) {
-                if (hijo1.getValor() != peor1.getValor() && hijo1.getValor() < peor2.getValor()) {
-                    poblacion[peor1.getId() - 1] = hijo1;
-                } else if (hijo2.getValor() != peor1.getValor() && hijo2.getValor() < peor2.getValor()) {
-                    poblacion[peor2.getId() - 1] = hijo2;
+            if ( peor1.getValor() > hijo1.getValor() ) {
+                poblacion.set(posPeor1, hijo1);
+                if ( peor2.getValor() > hijo2.getValor() ) {
+                    poblacion.set(posPeor2, hijo2);
                 }
-            } else {
-                if (hijo2.getValor() != peor1.getValor() && hijo2.getValor() < peor2.getValor()) {
-                    poblacion[peor2.getId()] = hijo2;
-                } else if (hijo1.getValor() != peor2.getValor() && hijo1.getValor() < peor1.getValor()) {
-                    poblacion[peor1.getId()] = hijo1;
+            } else if ( peor2.getValor() > hijo1.getValor() ) {
+                poblacion.set(posPeor2, hijo1);
+                if ( peor1.getValor() > hijo1.getValor() ) {
+                    poblacion.set(posPeor1, hijo1);
                 }
             }
 
-            System.out.println("");
-            System.out.println("");
+            //System.out.println("");
+            //System.out.println("");
             for ( Individuo individuo : poblacion ) {
                 individuo.evaluar(f, d);
-                individuo.mostrarGenotipo();
+                //individuo.mostrarGenotipo();
             }
 
         } while ( t < stop );
+
+        for ( Individuo i : poblacion ) {
+            i.mostrarGenotipo();
+        }
     }
 
+    //TODO: Aplicar LOGS
     public static Individuo cruceEnOrden(Individuo padre1, Individuo padre2) {
         Random r = new Random();
+        Individuo hijo = new Individuo(22);
+        int[] genotipoPadre1 = padre1.getGenotipo();
+        int[] genotipoPadre2 = padre2.getGenotipo();
+        int[] genotipoHijo = new int[padre1.getGenotipo().length];
+        boolean insertado = false;
         int corte1, corte2;
+
         do {
             corte1 = r.nextInt(22);
             corte2 = r.nextInt(21)+1;
         } while ( corte1 >= corte2 );
 
-        System.out.println("Cortes: ");
-        System.out.println("Corte 1: " + corte1);
-        System.out.println("Corte 2: " + corte2);
-        for ( int i = 0; i < 9; i++ ) {
-            if (i != corte1 && i != corte2) {
-                System.out.print("  ");
-            } else {
-                System.out.print("* ");
+        for ( int i = 0; i < genotipoHijo.length; i++ ) {
+            genotipoHijo[i] = -1;
+        }
+
+        for ( int i = corte1; i < corte2; i++ ) {
+            genotipoHijo[i] = genotipoPadre1[i];
+        }
+
+        for ( int i = 0; i < genotipoPadre2.length; i++ ) {
+            for ( int j = 0; j < genotipoHijo.length; j++ ) {
+                if ( genotipoPadre2[i] == genotipoHijo[j] ) {
+                    insertado = true;
+                }
             }
+            if ( !insertado ) {
+                for ( int k = corte2; k < genotipoHijo.length; k++ ) {
+                    if ( genotipoHijo[k] == -1 ) {
+                        genotipoHijo[k] = genotipoPadre2[i];
+                        break;
+                    }
+                }
+            }
+            insertado = false;
         }
 
-        System.out.println();
-        padre1.mostrarGenotipo();
-        padre2.mostrarGenotipo();
-
-        Individuo hijo1 = new Individuo(22);
-
-        hijo1.setGenotipo(padre1.getGenotipo(), corte1, corte2);
-
-        for ( int i = corte2+1; i < hijo1.getGenotipo().length; i++ ) {
-            hijo1.setGenotipo(i, padre2.getGenotipo()[i]);
+        for ( int i = 0; i < genotipoPadre2.length; i++ ) {
+            for ( int j = 0; j < genotipoHijo.length; j++ ) {
+                if ( genotipoPadre2[i] == genotipoHijo[j] ) {
+                    insertado = true;
+                }
+            }
+            if ( !insertado ) {
+                for ( int k = 0; k < corte1; k++ ) {
+                    if ( genotipoHijo[k] == -1 ) {
+                        genotipoHijo[k] = genotipoPadre2[i];
+                        break;
+                    }
+                }
+            }
+            insertado = false;
         }
 
-        for ( int i = 0; i < corte1; i++ ) {
-            hijo1.setGenotipo(i, padre2.getGenotipo()[i]);
-        }
-
-        hijo1.mostrarGenotipo();
-        return hijo1;
+        hijo.setGenotipo(genotipoHijo);
+        return hijo;
     }
 
-    //TODO: Realizar correctamente crucePMX, no funciona
+    //TODO: APLICAR LOGS
     public static Individuo crucePMX(Individuo padre1, Individuo padre2) {
         Random r = new Random();
+        Individuo hijo = new Individuo(22);
+        int[] genotipoPadre1 = padre1.getGenotipo();
+        int[] genotipoPadre2 = padre2.getGenotipo();
+        int[] genotipoHijo = new int[padre1.getGenotipo().length];
         int corte1, corte2;
+        boolean insertado = false;
+
         do {
             corte1 = r.nextInt(22);
             corte2 = r.nextInt(21)+1;
         } while ( corte1 >= corte2 );
 
-        System.out.println("Cortes: ");
-        System.out.println("Corte 1: " + corte1);
-        System.out.println("Corte 2: " + corte2);
-        System.out.print("Individuo xx: ");
-        for ( int i = 0; i < padre1.getGenotipo().length; i++ ) {
-            if ( padre1.getGenotipo()[i] <= 10 ) System.out.print("  ");
+        //System.out.println("Cortes: ");
+        //System.out.println("Corte 1: " + corte1);
+        //System.out.println("Corte 2: " + corte2);
+        //System.out.print("Individuo xx: ");
+        for ( int i = 0; i < genotipoPadre1.length; i++ ) {
+            if ( genotipoPadre1[i] <= 10 ) //System.out.print("  ");
             if (i != corte1 && i != corte2) {
-                System.out.print(" ");
+                //System.out.print(" ");
             } else {
-                System.out.print("*");
+                //System.out.print("*");
             }
         }
-        System.out.println();
-        padre1.mostrarGenotipo();
-        padre2.mostrarGenotipo();
+        //System.out.println();
+        //padre1.mostrarGenotipo();
+        //padre2.mostrarGenotipo();
 
-        Individuo hijo1 = new Individuo(22);
-        hijo1.setGenotipo(padre2.getGenotipo(), corte1, corte2);
-        hijo1.mostrarGenotipo();
-        System.out.println();
+        for ( int i = 0; i < genotipoHijo.length; i++ ) {
+            genotipoHijo[i] = -1;
+        }
+        //System.out.println();
 
         int iniciosPadre1[] = new int[(corte2-corte1)+1];
-        int iniciosPadre2[] = new int[(corte2-corte1)+1];
         for ( int i = 0; i < iniciosPadre1.length; i++ ) {
             iniciosPadre1[i] = padre1.getGenotipo()[corte1+i];
-            iniciosPadre2[i] = padre2.getGenotipo()[corte1+i];
+        }
+
+        for ( int i = corte1; i < corte2; i++ ) {
+            genotipoHijo[i] = genotipoPadre2[i];
         }
 
         for ( int n : iniciosPadre1 ) {
@@ -185,8 +215,8 @@ public class Main {
             int posicion2 = corte1;
 
             do {
-                for ( int i = 0; i < hijo1.getGenotipo().length; i++ ) {
-                    if ( n == hijo1.getGenotipo()[i] ) {
+                for ( int i = 0; i < genotipoHijo.length; i++ ) {
+                    if ( n == genotipoHijo[i] ) {
                         encontrado = true;
                         continuar = false;
                         break;
@@ -194,18 +224,18 @@ public class Main {
                 }
 
                 if ( !encontrado ) {
-                    for ( int i = 0; i < padre1.getGenotipo().length; i++ ) {
-                        if ( busq == padre1.getGenotipo()[i] ) {
+                    for ( int i = 0; i < genotipoPadre1.length; i++ ) {
+                        if ( busq == genotipoPadre1[i] ) {
                             posicion = i;
-                            busqAux = padre2.getGenotipo()[i];
+                            busqAux = genotipoPadre2[i];
                             break;
                         }
                     }
 
-                    for (int i = 0; i < padre1.getGenotipo().length; i++) {
-                        if (busqAux == padre1.getGenotipo()[i]) {
-                            if (hijo1.getGenotipo()[i] == -1) {
-                                hijo1.setGenotipo(i, n);
+                    for (int i = 0; i < genotipoPadre1.length; i++) {
+                        if (busqAux == genotipoPadre1[i]) {
+                            if ( genotipoHijo[i] == -1) {
+                                genotipoHijo[i] = n;
                                 continuar = false;
                                 break;
                             } else {
@@ -217,26 +247,64 @@ public class Main {
                     }
                 }
             } while ( continuar );
-            hijo1.mostrarGenotipo();
+            hijo.setGenotipo(genotipoHijo);
+            //hijo.mostrarGenotipo();
         }
 
-        return padre1;
+        for ( int i = 0; i < genotipoPadre2.length; i++ ) {
+            for ( int j = 0; j < genotipoHijo.length; j++ ) {
+                if ( genotipoPadre2[i] == genotipoHijo[j] ) {
+                    insertado = true;
+                }
+            }
+            if ( !insertado ) {
+                for ( int k = corte2; k < genotipoHijo.length; k++ ) {
+                    if ( genotipoHijo[k] == -1 ) {
+                        genotipoHijo[k] = genotipoPadre2[i];
+                        break;
+                    }
+                }
+            }
+            insertado = false;
+        }
+
+        for ( int i = 0; i < genotipoPadre2.length; i++ ) {
+            for ( int j = 0; j < genotipoHijo.length; j++ ) {
+                if ( genotipoPadre2[i] == genotipoHijo[j] ) {
+                    insertado = true;
+                }
+            }
+            if ( !insertado ) {
+                for ( int k = 0; k < corte1; k++ ) {
+                    if ( genotipoHijo[k] == -1 ) {
+                        genotipoHijo[k] = genotipoPadre2[i];
+                        break;
+                    }
+                }
+            }
+            insertado = false;
+        }
+
+        hijo.setGenotipo(genotipoHijo);
+        //hijo.mostrarGenotipo();
+
+        return hijo;
 
     }
 
-    public static Individuo evaluacionPorTorneo(Individuo[] poblacion) {
+    public static Individuo evaluacionPorTorneo(List<Individuo> poblacion) {
         Random r = new Random();
         int individuo1, individuo2;
 
         do {
-            individuo1 = r.nextInt(poblacion.length);
-            individuo2 = r.nextInt(poblacion.length);
+            individuo1 = r.nextInt(poblacion.size());
+            individuo2 = r.nextInt(poblacion.size());
         } while ( individuo1 == individuo2);
 
-        if ( poblacion[individuo1].getValor() > poblacion[individuo2].getValor() )
-            return poblacion[individuo1];
+        if ( poblacion.get(individuo1).getValor() < poblacion.get(individuo2).getValor() )
+            return poblacion.get(individuo1);
         else
-            return poblacion[individuo2];
+            return poblacion.get(individuo2);
     }
 
     public static Properties inicializarPropiedades() {
@@ -247,7 +315,7 @@ public class Main {
 
             return configuracion;
         } catch (IOException e) {
-            System.out.println("Error: No se pudo leer el fichero");
+            //System.out.println("Error: No se pudo leer el fichero");
             return null;
         }
     }

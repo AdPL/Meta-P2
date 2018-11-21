@@ -16,7 +16,7 @@ public class Individuo {
         this.generacion = 0;
         this.evaluado = true;
         this.genotipo = generarGenotipo(tamGenotipo);
-    };
+    }
 
     public Individuo(int valor, int generacion, boolean evaluado, int tamGenotipo) {
         this.id = cuenta.incrementAndGet();
@@ -128,11 +128,11 @@ public class Individuo {
         for ( int i = 0; i < genotipo.length; i++ ) {
             random = rnd.nextDouble();
             if ( random < 0.5 ) {
-                System.out.print(" | MUTA gen " + i);
+                //System.out.print(" | MUTA gen " + i);
                 mutados.add(i);
             }
         }
-        System.out.println();
+        ////System.out.println();
         for ( int i = 0; i < (mutados.size()-1); i++ ) {
             int pos = mutados.get(i);
             int pos2 = mutados.get(i+1);
