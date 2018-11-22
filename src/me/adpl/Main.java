@@ -24,6 +24,8 @@ public class Main {
         algoritmoGeneticoEstacionario(poblacion, stop, f, d);
     }
 
+
+    //TODO: Falta mantener el Élite
     public static void algoritmoGeneticoEstacionario(List<Individuo> poblacion, int stop, int[][] f, int[][] d) {
         int t = 0;
         List<Individuo> ganadoresTorneo = new ArrayList<>();
@@ -32,10 +34,11 @@ public class Main {
             t++;
             for ( Individuo individuo : poblacion ) {
                 individuo.evaluar(f, d);
-                //individuo.mostrarGenotipo();
             }
+            // SELECCIÓN DE INDIVIDUOS POR TORNEO
             ganadoresTorneo.add(evaluacionPorTorneo(poblacion));
             ganadoresTorneo.add(evaluacionPorTorneo(poblacion));
+
             Individuo hijo1 = crucePMX(ganadoresTorneo.get(0), ganadoresTorneo.get(1));
             Individuo hijo2 = crucePMX(ganadoresTorneo.get(1), ganadoresTorneo.get(0));
 
@@ -48,49 +51,49 @@ public class Main {
             Individuo peores[] = new Individuo[2];
 
             for ( int i = 0; i < poblacion.size(); i++ ) {
-                if ( peor1.getValor() > poblacion.get(i).getValor() ) {
-                    //System.out.println("Peor 1: " + peor1.getValor() + " vs " + poblacion.get(i).getValor() + " CAMBIO");
+                if ( peor1.getValor() < poblacion.get(i).getValor() ) {
                     peor1 = poblacion.get(i);
                     posPeor1 = i;
                 }
-                if ( poblacion.get(i).getValor() != peor1.getValor() && peor2.getValor() > poblacion.get(i).getValor() ) {
-                    //System.out.println("Peor 2: " + peor2.getValor() + " vs " + poblacion.get(i).getValor() + " CAMBIO");
+                if ( poblacion.get(i).getValor() != peor1.getValor() && peor2.getValor() < poblacion.get(i).getValor() ) {
                     peor2 = poblacion.get(i);
                     posPeor2 = i;
                 }
             }
 
-            //System.out.println("PEORES:");
-            //peor1.mostrarGenotipo();
-            //peor2.mostrarGenotipo();
-            //System.out.println("HIJOS:");
             hijo1.evaluar(f, d);
             hijo2.evaluar(f, d);
-            //hijo1.mostrarGenotipo();
-            //hijo2.mostrarGenotipo();
 
-            //TODO: MUTAR
-            //(hijo1.mutacion();
-            //hijo1.evaluar(f, d);
-            //hijo1.mostrarGenotipo();
+            hijo1 = mutacion(hijo1);
+            hijo2 = mutacion(hijo2);
 
-            if ( peor1.getValor() > hijo1.getValor() ) {
-                poblacion.set(posPeor1, hijo1);
-                if ( peor2.getValor() > hijo2.getValor() ) {
-                    poblacion.set(posPeor2, hijo2);
+            Individuo mejores[] = new Individuo[2];
+
+            if ( hijo1.getValor() < hijo2.getValor() ) {
+                mejores[0] = hijo1;
+                mejores[1] = hijo2;
+            } else {
+                mejores[0] = hijo2;
+                mejores[1] = hijo1;
+            }
+
+            if ( mejores[0].getValor() < peor1.getValor() ) {
+                poblacion.set(posPeor1, mejores[0]);
+                mejores[0] = peor1;
+            }
+
+            if ( mejores[0].getValor() < mejores[1].getValor() ) {
+                if ( mejores[0].getValor() < peor2.getValor() ) {
+                    poblacion.set(posPeor2, mejores[0]);
                 }
-            } else if ( peor2.getValor() > hijo1.getValor() ) {
-                poblacion.set(posPeor2, hijo1);
-                if ( peor1.getValor() > hijo1.getValor() ) {
-                    poblacion.set(posPeor1, hijo1);
+            } else {
+                if ( mejores[1].getValor() < peor2.getValor() ) {
+                    poblacion.set(posPeor2, mejores[1]);
                 }
             }
 
-            //System.out.println("");
-            //System.out.println("");
             for ( Individuo individuo : poblacion ) {
                 individuo.evaluar(f, d);
-                //individuo.mostrarGenotipo();
             }
 
         } while ( t < stop );
@@ -176,26 +179,9 @@ public class Main {
             corte2 = r.nextInt(21)+1;
         } while ( corte1 >= corte2 );
 
-        //System.out.println("Cortes: ");
-        //System.out.println("Corte 1: " + corte1);
-        //System.out.println("Corte 2: " + corte2);
-        //System.out.print("Individuo xx: ");
-        for ( int i = 0; i < genotipoPadre1.length; i++ ) {
-            if ( genotipoPadre1[i] <= 10 ) //System.out.print("  ");
-            if (i != corte1 && i != corte2) {
-                //System.out.print(" ");
-            } else {
-                //System.out.print("*");
-            }
-        }
-        //System.out.println();
-        //padre1.mostrarGenotipo();
-        //padre2.mostrarGenotipo();
-
         for ( int i = 0; i < genotipoHijo.length; i++ ) {
             genotipoHijo[i] = -1;
         }
-        //System.out.println();
 
         int iniciosPadre1[] = new int[(corte2-corte1)+1];
         for ( int i = 0; i < iniciosPadre1.length; i++ ) {
@@ -248,7 +234,6 @@ public class Main {
                 }
             } while ( continuar );
             hijo.setGenotipo(genotipoHijo);
-            //hijo.mostrarGenotipo();
         }
 
         for ( int i = 0; i < genotipoPadre2.length; i++ ) {
@@ -289,7 +274,31 @@ public class Main {
         //hijo.mostrarGenotipo();
 
         return hijo;
+    }
 
+    public static Individuo mutacion(Individuo primero) {
+        Random rnd = new Random();
+        List<Integer> mutados = new ArrayList<>();
+        int[] genotipoPrimero = primero.getGenotipo();
+        double probabilidad = 0.001 * genotipoPrimero.length;
+        double random;
+
+        for ( int i = 0; i < genotipoPrimero.length; i++ ) {
+            random = rnd.nextDouble();
+            if ( random < 0.5 ) {
+                mutados.add(i);
+            }
+        }
+
+        for ( int i = 0; i < (mutados.size()-1); i++ ) {
+            int pos = mutados.get(i);
+            int pos2 = mutados.get(i+1);
+            int aux = genotipoPrimero[pos];
+            genotipoPrimero[pos] = genotipoPrimero[pos2];
+            genotipoPrimero[pos2] = aux;
+        }
+
+        return primero;
     }
 
     public static Individuo evaluacionPorTorneo(List<Individuo> poblacion) {
