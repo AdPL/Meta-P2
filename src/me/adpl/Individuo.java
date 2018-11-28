@@ -1,5 +1,7 @@
 package me.adpl;
 
+import javafx.util.Pair;
+
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -7,13 +9,11 @@ public class Individuo {
     private static final AtomicInteger cuenta = new AtomicInteger(0);
     private int id;
     private int valor;
-    private int generacion;
     private boolean evaluado;
     private int[] genotipo;
 
     public Individuo(int tamGenotipo) {
         this.id = cuenta.incrementAndGet();
-        this.generacion = 0;
         this.evaluado = true;
         this.genotipo = generarGenotipo(tamGenotipo);
     }
@@ -21,7 +21,6 @@ public class Individuo {
     public Individuo(int valor, int generacion, boolean evaluado, int tamGenotipo) {
         this.id = cuenta.incrementAndGet();
         this.valor = valor;
-        this.generacion = generacion;
         this.evaluado = evaluado;
         this.genotipo = generarGenotipo(tamGenotipo);
     }
@@ -36,14 +35,6 @@ public class Individuo {
 
     public void setValor(int valor) {
         this.valor = valor;
-    }
-
-    public int getGeneracion() {
-        return generacion;
-    }
-
-    public void setGeneracion(int generacion) {
-        this.generacion = generacion;
     }
 
     public boolean isEvaluado() {
@@ -62,15 +53,6 @@ public class Individuo {
         this.genotipo = genotipo;
     }
 
-    public void setGenotipo(int[] genotipo, int inicio, int fin) {
-        for ( int i = 0; i < 22; i++ ) {
-            this.genotipo[i] = -1;
-            if ( i >= inicio && i <= fin ) {
-                this.genotipo[i] = genotipo[i];
-            }
-        }
-    }
-
     public void setGenotipo(int pos, int v) {
         this.genotipo[pos] = v;
     }
@@ -78,6 +60,7 @@ public class Individuo {
     private int[] generarGenotipo(int tamGenotipo) {
         int genotipo[] = new int[tamGenotipo];
         Random rnd = new Random();
+        rnd.setSeed(2123213);
         Set<Integer> generados = new HashSet<>();
         for (int i = 0; i < tamGenotipo; i++) {
             int aleatorio = -1;
@@ -95,6 +78,7 @@ public class Individuo {
         return genotipo;
     }
 
+    //TODO: No evaluar si está evaluado - gestionar
     public void evaluar(int[][] f, int[][] d) {
         int suma = 0;
 
@@ -109,39 +93,56 @@ public class Individuo {
         this.valor = suma;
     }
 
-    public void mostrarGenotipo() {
-        System.out.print("Individuo " + id + ": ");
-        for ( int i = 0; i < 22; i++ ) {
-            if ( genotipo[i] == - 1 )
-                System.out.print("X ");
-            else
-                System.out.print(genotipo[i] + " ");
-        }
-        System.out.println(" = " + valor);
-    }
-
-    public void mutacion() {
+    public void mutacion(double prob_mutacion) {
         Random rnd = new Random();
-        List<Integer> mutados = new ArrayList<>();
-        double probabilidad = 0.001 * genotipo.length;
+        List<Pair<Integer, Integer>> mutados = new ArrayList<>();
+        double probabilidad = prob_mutacion * genotipo.length;
         double random;
         for ( int i = 0; i < genotipo.length; i++ ) {
             random = rnd.nextDouble();
+
             if ( random < 0.5 ) {
-                //System.out.print(" | MUTA gen " + i);
-                mutados.add(i);
+                mutados.add(new Pair<>(i, genotipo[i]));
             }
         }
-        ////System.out.println();
-        for ( int i = 0; i < (mutados.size()-1); i++ ) {
-            int pos = mutados.get(i);
-            int pos2 = mutados.get(i+1);
-            int aux = genotipo[pos];
-            genotipo[pos] = genotipo[pos2];
-            genotipo[pos2] = aux;
+
+        Pair<Integer, Integer> gen1, gen2;
+        while ( mutados.size() >= 2 ) {
+            gen1 = mutados.remove(rnd.nextInt(mutados.size()));
+            gen2 = mutados.remove(rnd.nextInt(mutados.size()));
+            genotipo[gen1.getKey()] = gen2.getValue();
+            genotipo[gen2.getKey()] = gen1.getValue();
+            genotipo.toString();
+        }
+
+        if ( mutados.size() != 0 ) {
+            gen1 = mutados.remove(0);
+            int posGen2 = rnd.nextInt(genotipo.length);
+            int valorGen = genotipo[posGen2];
+            gen2 = new Pair<>(posGen2, valorGen);
+            genotipo[gen1.getKey()] = gen2.getValue();
+            genotipo[gen2.getKey()] = gen1.getValue();
         }
     }
 
     @Override
-    public String toString() { return "Individuo " + id + ": " + valor; }
+    public boolean equals(Object o) {
+        if ( o == null ) return false;
+        Individuo individuo = (Individuo) o;
+        return ( this.genotipo == ((Individuo) o).getGenotipo() && this.valor == ((Individuo) o).getValor() ) ? true : false;
+    }
+
+    @Override
+    public String toString() {
+        String cadena = "";
+        cadena += "Individuo " + id + ": ";
+        for ( int i = 0; i < genotipo.length; i++ ) {
+            if ( genotipo[i] == - 1 )
+                cadena += "X ";
+            else
+                cadena += genotipo[i] + " ";
+        }
+        cadena += " = " + valor;
+        return cadena;
+    }
 }
