@@ -15,54 +15,34 @@ public class Main {
         boolean estacionario = false, generacional = false;
         String[] archivos = {" "};
         String[] algoritmos = {};
+        String[] cargaSemillas = {};
 
-        //TODO: Ajustar correctamente la forma de ejecutar por el fichero main.properties o comando en consola
+        stop = Integer.parseInt(configuracion.getProperty("limite_evaluaciones"));
+        nIndividuos = Integer.parseInt(configuracion.getProperty("poblacion"));
+        String archivosEjecucion = configuracion.getProperty("input");
+        String algoritmosEjecucion = configuracion.getProperty("algoritmo");
+        String semillasEjecucion = configuracion.getProperty("semillas");
+        prob_generacional = Double.parseDouble(configuracion.getProperty("probabilidad_cruce_generacional"));
+        prob_mutacion = Double.parseDouble(configuracion.getProperty("probabilidad_de_mutacion"));
 
-        if ( args.length == 0 ) {
-            stop = Integer.parseInt(configuracion.getProperty("limite_evaluaciones"));
-            nIndividuos = Integer.parseInt(configuracion.getProperty("poblacion"));
-            String archivosEjecucion = configuracion.getProperty("input");
-            String algoritmosEjecucion = configuracion.getProperty("algoritmo");
-            prob_generacional = Double.parseDouble(configuracion.getProperty("probabilidad_cruce_generacional"));
-            prob_mutacion = Double.parseDouble(configuracion.getProperty("probabilidad_de_mutacion"));
+        archivos = archivosEjecucion.split(",");
+        algoritmos = algoritmosEjecucion.split(",");
+        cargaSemillas = semillasEjecucion.split(",");
+        int nSemillas = cargaSemillas.length;
+        int c = 0;
+        int semillas[] = new int[nSemillas];
+        while ( c < nSemillas ) {
+            semillas[c] = Integer.parseInt(cargaSemillas[c]);
+            c++;
+        }
 
-            archivos = archivosEjecucion.split(",");
-            algoritmos = algoritmosEjecucion.split(",");
-
-            for ( String algoritmo : algoritmos ) {
-                if ( "estacionario".equals(algoritmo.toString()) ) {
-                    estacionario = true;
-                }
-                if ( "generacional".equals(algoritmo.toString()) ) {
-                    generacional = true;
-                }
-            }
-        } else {
-            System.out.println("Para la ejecución de los algoritmos puede");
-            System.out.println("indicar los parámetros en el fichero main.properties");
-            System.out.println("o como argumentos a través de la línea de comandos");
-            System.out.println("Usando: java main.java <Número de evaluaciones> <Tamaño población> <Algoritmos a ejecutar> <ficheros>");
-            System.out.println("Parámetros introducidos:");
-            for ( String arg : args ) {
-                System.out.println(arg);
-            }
-            stop = Integer.parseInt(args[0]);
-            nIndividuos = Integer.parseInt(args[1]);
-            if ( args[2] == "estacionario" ) {
+        for ( String algoritmo : algoritmos ) {
+            if ( "estacionario".equals(algoritmo.toString()) ) {
                 estacionario = true;
             }
-            if ( args[2] == "generacional" ) {
+            if ( "generacional".equals(algoritmo.toString()) ) {
                 generacional = true;
             }
-            if ( args[3] == "estacionario" ) {
-                estacionario = true;
-            }
-            if ( args[3] == "generacional" ) {
-                generacional = true;
-            }
-            archivos[0] = args[4];
-            prob_generacional = Double.parseDouble(args[5]);
-            prob_mutacion = Double.parseDouble(args[6]);
         }
 
         logger.setUseParentHandlers(false);
@@ -94,70 +74,85 @@ public class Main {
 
             System.out.println("Ejecución del fichero: " + a);
 
-            fileHandler = new FileHandler("./" + a.substring(0, 5) + "_generacional.log");
-            fileHandler.setFormatter(simpleFormatter);
-            logger.addHandler(fileHandler);
-            logger.log(Level.INFO, "Iniciando ejecución, fichero: " + a);
-
             if ( generacional ) {
-                System.out.println("Ejecutando versión generacional | Almacenando en fichero: " + a.substring(0, 5) + "_generacional.log");
-                logger.log(Level.INFO, " | VERSIÓN: GENERACIONAL | PMX ON");
-                for (int i = 0; i < nIndividuos; i++) {
-                    poblacion.add(new Individuo(f.length));
-                    poblacion.get(i).evaluar(f, d);
+                for ( int s : semillas ) {
+                    fileHandler = new FileHandler("./" + a.substring(0, 5) + "_generacional_" + s + ".log");
+                    fileHandler.setFormatter(simpleFormatter);
+                    logger.addHandler(fileHandler);
+                    logger.log(Level.INFO, "Iniciando ejecución, fichero: " + a + " | Semilla = " + s);
+
+                    System.out.println("Ejecutando versión generacional | Almacenando en fichero: " + a.substring(0, 5) + "_generacional_" + s + ".log");
+                    logger.log(Level.INFO, " | VERSIÓN: GENERACIONAL | PMX ON");
+                    for (int i = 0; i < nIndividuos; i++) {
+                        poblacion.add(new Individuo(f.length, s));
+                        poblacion.get(i).evaluar(f, d);
+                    }
+                    tStart = System.currentTimeMillis();
+                    algoritmoGeneticoGeneracional(poblacion, true, prob_generacional, prob_mutacion, stop, f, d, s);
+                    tEnd = System.currentTimeMillis();
+                    logger.log(Level.INFO, "The task has taken " + (tEnd - tStart) + " milliseconds.");
+                    poblacion.clear();
+                    for (int i = 0; i < nIndividuos; i++) {
+                        poblacion.add(new Individuo(f.length, s));
+                        poblacion.get(i).evaluar(f, d);
+                    }
+                    logger.log(Level.INFO, " | VERSIÓN: GENERACIONAL | PMX OFF");
+                    tStart = System.currentTimeMillis();
+                    algoritmoGeneticoGeneracional(poblacion, false, prob_generacional, prob_mutacion, stop, f, d, s);
+                    tEnd = System.currentTimeMillis();
+                    logger.log(Level.INFO, "The task has taken " + (tEnd - tStart) + " milliseconds.");
+                    poblacion.clear();
+                    fileHandler.close();
                 }
-                tStart = System.currentTimeMillis();
-                algoritmoGeneticoGeneracional(poblacion, true, prob_generacional, prob_mutacion, stop, f, d);
-                tEnd = System.currentTimeMillis();
-                logger.log(Level.INFO,"The task has taken " + (tEnd - tStart) + " milliseconds.");
-                poblacion.clear();
-                for (int i = 0; i < nIndividuos; i++) {
-                    poblacion.add(new Individuo(f.length));
-                    poblacion.get(i).evaluar(f, d);
-                }
-                logger.log(Level.INFO," | VERSIÓN: GENERACIONAL | PMX OFF");
-                tStart = System.currentTimeMillis();
-                algoritmoGeneticoGeneracional(poblacion, false, prob_generacional, prob_mutacion, stop, f, d);
-                tEnd = System.currentTimeMillis();
-                logger.log(Level.INFO,"The task has taken " + (tEnd - tStart) + " milliseconds.");
-                poblacion.clear();
             }
-
-            fileHandler.close();
-
-            fileHandler = new FileHandler("./" + a.substring(0, 5) + "_estacionario.log");
-            fileHandler.setFormatter(simpleFormatter);
-            logger.addHandler(fileHandler);
-            logger.log(Level.INFO, "Iniciando ejecución, fichero: " + a);
 
             if ( estacionario ) {
-                System.out.println("Ejecutando versión estacionaria | Almacenando en fichero: " + a.substring(0, 5) + "_estacionario.log");
-                for (int i = 0; i < nIndividuos; i++) {
-                    poblacion.add(new Individuo(f.length));
-                    poblacion.get(i).evaluar(f, d);
+                for (int s : semillas) {
+                    fileHandler = new FileHandler("./" + a.substring(0, 5) + "_estacionario_" + s + ".log");
+                    fileHandler.setFormatter(simpleFormatter);
+                    logger.addHandler(fileHandler);
+                    logger.log(Level.INFO, "Iniciando ejecución, fichero: " + a);
+
+                    System.out.println("Ejecutando versión estacionaria | Almacenando en fichero: " + a.substring(0, 5) + "_estacionario_" + s + ".log");
+                    for (int i = 0; i < nIndividuos; i++) {
+                        poblacion.add(new Individuo(f.length, s));
+                        poblacion.get(i).evaluar(f, d);
+                    }
+                    logger.log(Level.INFO, " | VERSIÓN: ESTACIONARIA | PMX ON");
+                    tStart = System.currentTimeMillis();
+                    algoritmoGeneticoEstacionario(poblacion, true, prob_mutacion, stop, f, d, s);
+                    tEnd = System.currentTimeMillis();
+                    logger.log(Level.INFO, "The task has taken " + (tEnd - tStart) + " milliseconds.");
+                    poblacion.clear();
+                    for (int i = 0; i < nIndividuos; i++) {
+                        poblacion.add(new Individuo(f.length, s));
+                        poblacion.get(i).evaluar(f, d);
+                    }
+                    logger.log(Level.INFO, " | VERSIÓN: ESTACIONARIA | PMX OFF");
+                    tStart = System.currentTimeMillis();
+                    algoritmoGeneticoEstacionario(poblacion, false, prob_mutacion, stop, f, d, s);
+                    tEnd = System.currentTimeMillis();
+                    logger.log(Level.INFO, "The task has taken " + (tEnd - tStart) + " milliseconds.");
+                    poblacion.clear();
+
+                    fileHandler.close();
                 }
-                logger.log(Level.INFO," | VERSIÓN: ESTACIONARIA | PMX ON");
-                tStart = System.currentTimeMillis();
-                algoritmoGeneticoEstacionario(poblacion, true, prob_mutacion, stop, f, d);
-                tEnd = System.currentTimeMillis();
-                logger.log(Level.INFO,"The task has taken " + (tEnd - tStart) + " milliseconds.");
-                poblacion.clear();
-                for (int i = 0; i < nIndividuos; i++) {
-                    poblacion.add(new Individuo(f.length));
-                    poblacion.get(i).evaluar(f, d);
-                }
-                logger.log(Level.INFO," | VERSIÓN: ESTACIONARIA | PMX OFF");
-                tStart = System.currentTimeMillis();
-                algoritmoGeneticoEstacionario(poblacion, false, prob_mutacion, stop, f, d);
-                tEnd = System.currentTimeMillis();
-                logger.log(Level.INFO,"The task has taken " + (tEnd - tStart) + " milliseconds.");
-                poblacion.clear();
             }
-            fileHandler.close();
         }
     }
 
-    public static void algoritmoGeneticoGeneracional(List<Individuo> poblacion, boolean PMX, double prob_cruce, double prob_mutacion, int stop, int[][] f, int[][] d) {
+    /**
+     *
+     * @param poblacion      Población inicial generada aleatoriamente
+     * @param PMX            Ejecutar PMX o En Orden, PMX si la variable es true, En Orden si PMX es false
+     * @param prob_cruce     Probabilidad para realizar un cruce
+     * @param prob_mutacion  Probabilidad para realizar mutación de gen
+     * @param stop           Condición de parada
+     * @param f              Matriz de frecuencias
+     * @param d              Matriz de distancias
+     * @param semilla        Semilla para la ejecución
+     */
+    public static void algoritmoGeneticoGeneracional(List<Individuo> poblacion, boolean PMX, double prob_cruce, double prob_mutacion, int stop, int[][] f, int[][] d, int semilla) {
         Individuo mejor = obtenerMejorIndividuo(poblacion);
         Individuo elite = obtenerMejorIndividuo(poblacion);
         Individuo nuevoMejor;
@@ -167,6 +162,7 @@ public class Main {
         int t = 0;
         int mejorGeneracion = 0;
         Random rnd = new Random();
+        rnd.setSeed(semilla);
         double ejCruce;
 
         List<Individuo> ganadoresTorneo = new ArrayList<>();
@@ -181,7 +177,7 @@ public class Main {
             ////////////////////////////////////////////
 
             for ( int i = 0; i < tamPoblacion; i++ ) {
-                ganadoresTorneo.add(seleccionPorTorneo(poblacion));
+                ganadoresTorneo.add(seleccionPorTorneo(poblacion, semilla));
             }
 
             ////////////////////////////////////////////
@@ -190,42 +186,42 @@ public class Main {
             ////////////////////////////////////////////
 
             ejCruce = rnd.nextDouble();
-            Individuo hijo1, hijo2;
 
             hijos.clear();
-            for ( int i = 0; i < tamPoblacion-1; i++ ) {
+            for ( int i = 0; i < tamPoblacion-1; i+=2 ) {
                 if ( PMX ) {
                     if ( ejCruce < prob_cruce ) {
-                        hijos.add(crucePMX(ganadoresTorneo.get(i), ganadoresTorneo.get(i + 1)));
-                        hijos.add(crucePMX(ganadoresTorneo.get(i + 1), ganadoresTorneo.get(i)));
+                        hijos.add(crucePMX(ganadoresTorneo.get(i), ganadoresTorneo.get(i + 1), semilla));
+                        hijos.add(crucePMX(ganadoresTorneo.get(i + 1), ganadoresTorneo.get(i), semilla));
                     } else {
                         hijos.add(ganadoresTorneo.get(i));
                         hijos.add(ganadoresTorneo.get(i+1));
                     }
                 } else {
                     if ( ejCruce < prob_cruce ) {
-                        hijos.add(cruceEnOrden(ganadoresTorneo.get(i), ganadoresTorneo.get(i + 1)));
-                        hijos.add(cruceEnOrden(ganadoresTorneo.get(i + 1), ganadoresTorneo.get(i)));
+                        hijos.add(cruceEnOrden(ganadoresTorneo.get(i), ganadoresTorneo.get(i + 1), semilla));
+                        hijos.add(cruceEnOrden(ganadoresTorneo.get(i + 1), ganadoresTorneo.get(i), semilla));
                     } else {
                         hijos.add(ganadoresTorneo.get(i));
                         hijos.add(ganadoresTorneo.get(i+1));
                     }
                 }
+            }
 
+            poblacion.clear();
+            for ( int i = 0; i < tamPoblacion; i++ ) {
                 ////////////////////////////////////////////
                 ////   MUTACIÓN DE LOS DESCENCIENTES    ////
                 ////      OBTENIDOS EN LOS CRUCES       ////
                 ////////////////////////////////////////////
-                hijos.get(i).mutacion(prob_mutacion);
-            }
 
-            //hijos.add(new Individuo(hijos.get(0).getGenotipo().length));
-            poblacion.clear();
-            for ( int i = 0; i < tamPoblacion; i++ ) {
+                hijos.get(i).mutacion(prob_mutacion);
+
                 //////////////////////////////////////////////
                 ////   EVALUACIÓN DE LOS DESCENCIENTES    ////
                 ////      OBTENIDOS TRAS MUTAR GENES      ////
                 //////////////////////////////////////////////
+
                 hijos.get(i).evaluar(f, d);
                 eval++;
                 poblacion.add(hijos.get(i));
@@ -259,11 +255,22 @@ public class Main {
 
     }
 
-    public static void algoritmoGeneticoEstacionario(List<Individuo> poblacion, boolean PMX, double prob_mutacion, int stop, int[][] f, int[][] d) {
+    /**
+     *
+     * @param poblacion      Población inicial generada aleatoriamente
+     * @param PMX            Ejecutar PMX o En Orden, PMX si la variable es true, En Orden si PMX es false
+     * @param prob_mutacion  Probabilidad para realizar mutación de gen
+     * @param stop           Condición de parada
+     * @param f              Matriz de frecuencias
+     * @param d              Matriz de distancias
+     * @param semilla        Semilla para la ejecución
+     */
+    public static void algoritmoGeneticoEstacionario(List<Individuo> poblacion, boolean PMX, double prob_mutacion, int stop, int[][] f, int[][] d, int semilla) {
         Individuo mejor = poblacion.get(0), nuevoMejor;
         int t = 0, mejorGeneracion = 0, eval = 0;
         List<Individuo> ganadoresTorneo = new ArrayList<>();
         Random rnd = new Random();
+        rnd.setSeed(semilla);
         double ejCruce;
 
         do {
@@ -275,8 +282,8 @@ public class Main {
             ////         POR TORNEO, K = 2          ////
             ////////////////////////////////////////////
 
-            ganadoresTorneo.add(seleccionPorTorneo(poblacion));
-            ganadoresTorneo.add(seleccionPorTorneo(poblacion));
+            ganadoresTorneo.add(seleccionPorTorneo(poblacion, semilla));
+            ganadoresTorneo.add(seleccionPorTorneo(poblacion, semilla));
 
             ////////////////////////////////////////////
             ////   RECOMBINACIÓN DE DESCENDIANTES   ////
@@ -287,11 +294,11 @@ public class Main {
             Individuo hijo1, hijo2;
 
             if ( PMX ) {
-                hijo1 = crucePMX(ganadoresTorneo.get(0), ganadoresTorneo.get(1));
-                hijo2 = crucePMX(ganadoresTorneo.get(1), ganadoresTorneo.get(0));
+                hijo1 = crucePMX(ganadoresTorneo.get(0), ganadoresTorneo.get(1), semilla);
+                hijo2 = crucePMX(ganadoresTorneo.get(1), ganadoresTorneo.get(0), semilla);
             } else {
-                hijo1 = cruceEnOrden(ganadoresTorneo.get(0), ganadoresTorneo.get(1));
-                hijo2 = cruceEnOrden(ganadoresTorneo.get(1), ganadoresTorneo.get(0));
+                hijo1 = cruceEnOrden(ganadoresTorneo.get(0), ganadoresTorneo.get(1), semilla);
+                hijo2 = cruceEnOrden(ganadoresTorneo.get(1), ganadoresTorneo.get(0), semilla);
             }
 
             ////////////////////////////////////////////
@@ -307,7 +314,6 @@ public class Main {
             ////      OBTENIDOS TRAS MUTAR GENES      ////
             //////////////////////////////////////////////
 
-            //TODO: Revisar
             hijo1.evaluar(f, d);
             hijo2.evaluar(f, d);
             eval += 2;
@@ -400,6 +406,11 @@ public class Main {
         logger.log(Level.INFO, "Así el mejor final es: " + mejor.toString() + " | obtenido en la generación " + (t-mejorGeneracion+1));
     }
 
+    /**
+     * Obtiene el mejor individuo de una población
+     * @param poblacion Conjunto de individuos donde buscamos el mejor
+     * @return Mejor individuo de la población
+     */
     public static Individuo obtenerMejorIndividuo(List<Individuo> poblacion) {
         Individuo mejor = poblacion.get(0);
         for ( Individuo i : poblacion ) {
@@ -409,6 +420,11 @@ public class Main {
         return mejor;
     }
 
+    /**
+     * Obtiene el peor individuo de una población
+     * @param poblacion Conjunto de individuos donde buscamos el peor
+     * @return Peor individuo de la población
+     */
     public static Individuo obtenerPeorIndividuo(List<Individuo> poblacion) {
         Individuo peor = poblacion.get(0);
         for ( Individuo i : poblacion ) {
@@ -418,11 +434,18 @@ public class Main {
         return peor;
     }
 
-    //TODO: Aplicar LOGS
-    public static Individuo cruceEnOrden(Individuo padre1, Individuo padre2) {
+    /**
+     * Cruza dos individuos usando cruce en Orden
+     * @param padre1 Primer individuo
+     * @param padre2 Segundo individuo
+     * @param semilla Semilla para la generación de randoms
+     * @return Individuo cruzado
+     */
+    public static Individuo cruceEnOrden(Individuo padre1, Individuo padre2, int semilla) {
         Random r = new Random();
+        r.setSeed(semilla);
         int tamGenotipo = padre1.getGenotipo().length;
-        Individuo hijo = new Individuo(tamGenotipo);
+        Individuo hijo = new Individuo(tamGenotipo, semilla);
         int[] genotipoPadre1 = padre1.getGenotipo();
         int[] genotipoPadre2 = padre2.getGenotipo();
         int[] genotipoHijo = new int[tamGenotipo];
@@ -480,11 +503,18 @@ public class Main {
         return hijo;
     }
 
-    //TODO: APLICAR LOGS
-    public static Individuo crucePMX(Individuo padre1, Individuo padre2) {
+    /**
+     * Cruza dos individuos usando cruce PMX
+     * @param padre1 Primer individuo
+     * @param padre2 Segundo individuo
+     * @param semilla Semilla para la generación de randoms
+     * @return Individuo cruzado
+     */
+    public static Individuo crucePMX(Individuo padre1, Individuo padre2, int semilla) {
         Random r = new Random();
+        r.setSeed(semilla);
         int tamGenotipo = padre1.getGenotipo().length;
-        Individuo hijo = new Individuo(tamGenotipo);
+        Individuo hijo = new Individuo(tamGenotipo, semilla);
         int[] genotipoPadre1 = padre1.getGenotipo();
         int[] genotipoPadre2 = padre2.getGenotipo();
         int[] genotipoHijo = new int[padre1.getGenotipo().length];
@@ -500,7 +530,6 @@ public class Main {
             genotipoHijo[i] = -1;
         }
 
-        //TODO: Revisar que esto compara todos los posibles inicios
         int iniciosPadre1[] = new int[(corte2-corte1)+1];
         for ( int i = 0; i < iniciosPadre1.length-1; i++ ) {
             iniciosPadre1[i] = padre1.getGenotipo()[corte1+i];
@@ -593,8 +622,15 @@ public class Main {
         return hijo;
     }
 
-    public static Individuo seleccionPorTorneo(List<Individuo> poblacion) {
+    /**
+     * Selecciona el mejor individuo entre 2 individuos generados al azar
+     * @param poblacion Conjunto de individuos
+     * @param semilla Semilla para la generación de randoms
+     * @return Mejor individuo de los dos enfrentados
+     */
+    public static Individuo seleccionPorTorneo(List<Individuo> poblacion, int semilla) {
         Random r = new Random();
+        r.setSeed(semilla);
         int individuo1, individuo2;
 
         do {
@@ -604,6 +640,7 @@ public class Main {
 
         return ( poblacion.get(individuo1).getValor() < poblacion.get(individuo2).getValor() ) ? poblacion.get(individuo1) : poblacion.get(individuo2);
     }
+
 
     public static Properties inicializarPropiedades() {
         try {

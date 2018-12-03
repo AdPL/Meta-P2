@@ -12,17 +12,17 @@ public class Individuo {
     private boolean evaluado;
     private int[] genotipo;
 
-    public Individuo(int tamGenotipo) {
+    public Individuo(int tamGenotipo, int semilla) {
         this.id = cuenta.incrementAndGet();
         this.evaluado = true;
-        this.genotipo = generarGenotipo(tamGenotipo);
+        this.genotipo = generarGenotipo(tamGenotipo, semilla);
     }
 
-    public Individuo(int valor, int generacion, boolean evaluado, int tamGenotipo) {
+    public Individuo(int valor, int generacion, boolean evaluado, int tamGenotipo, int semilla) {
         this.id = cuenta.incrementAndGet();
         this.valor = valor;
         this.evaluado = evaluado;
-        this.genotipo = generarGenotipo(tamGenotipo);
+        this.genotipo = generarGenotipo(tamGenotipo, semilla);
     }
 
     public int getId() { return id; }
@@ -57,10 +57,16 @@ public class Individuo {
         this.genotipo[pos] = v;
     }
 
-    private int[] generarGenotipo(int tamGenotipo) {
+    /**
+     * Genera el genotipo de un individuo, lo almacena en el individuo y lo devuelve
+     * @param tamGenotipo Tamaño del genotipo
+     * @param semilla Semilla para la generación de randoms
+     * @return Genotipo generado
+     */
+    private int[] generarGenotipo(int tamGenotipo, int semilla) {
         int genotipo[] = new int[tamGenotipo];
         Random rnd = new Random();
-        rnd.setSeed(2123213);
+        rnd.setSeed(semilla);
         Set<Integer> generados = new HashSet<>();
         for (int i = 0; i < tamGenotipo; i++) {
             int aleatorio = -1;
@@ -78,7 +84,11 @@ public class Individuo {
         return genotipo;
     }
 
-    //TODO: No evaluar si está evaluado - gestionar
+    /**
+     * Evaluación del genotipo de un individuo
+     * @param f Matriz de frecuencias
+     * @param d Matriz de distancias
+     */
     public void evaluar(int[][] f, int[][] d) {
         int suma = 0;
 
@@ -93,6 +103,10 @@ public class Individuo {
         this.valor = suma;
     }
 
+    /**
+     * Mutación de los genes de un individuo
+     * @param prob_mutacion Probabilidad de mutación para cada gen
+     */
     public void mutacion(double prob_mutacion) {
         Random rnd = new Random();
         List<Pair<Integer, Integer>> mutados = new ArrayList<>();
